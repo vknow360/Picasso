@@ -29,11 +29,13 @@ public class Picasso extends AndroidNonvisibleComponent{
         @Override
         public void onBitmapLoaded(Bitmap bitmap, com.squareup.picasso.Picasso.LoadedFrom loadedFrom) {
             view.setBackground(new BitmapDrawable(form.getResources(),bitmap));
+            Success();
         }
 
         @Override
         public void onBitmapFailed(Drawable drawable) {
             view.setBackground(drawable);
+            ErrorOccurred("Failed to load image");
         }
 
         @Override
@@ -72,7 +74,9 @@ public class Picasso extends AndroidNonvisibleComponent{
             RequestCreator picasso = com.squareup.picasso.Picasso.with(context).load(path);
             picasso.error(Drawable.createFromPath(errorImage));
             picasso.placeholder(Drawable.createFromPath(placeholderImage));
-            picasso.resize(width,height);
+            if (height != 0 && width != 0) {
+                picasso.resize(width,height);
+            }
             picasso.rotate(rotateDegree);
             switch (transformation) {
                 case "CENTER_CROP":
@@ -88,17 +92,7 @@ public class Picasso extends AndroidNonvisibleComponent{
                     picasso.noFade();
                     break;
             }
-            picasso.fetch(new Callback() {
-                @Override
-                public void onSuccess() {
-                    Success();
-                }
-
-                @Override
-                public void onError() {
-                    ErrorOccurred("Failed to load image");
-                }
-            });
+            picasso.into(target);
         }catch (Exception e){
             e.printStackTrace();
             ErrorOccurred(e.getMessage()!=null?e.getMessage():e.toString());
