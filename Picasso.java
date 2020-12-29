@@ -72,25 +72,33 @@ public class Picasso extends AndroidNonvisibleComponent{
         view = component.getView();
         try{
             RequestCreator picasso = com.squareup.picasso.Picasso.with(context).load(path);
-            picasso.error(Drawable.createFromPath(errorImage));
-            picasso.placeholder(Drawable.createFromPath(placeholderImage));
+            if (!errorImage.isEmpty()) {
+                picasso.error(Drawable.createFromPath(errorImage));
+            }
+            if (!placeholderImage.isEmpty()) {
+                picasso.placeholder(Drawable.createFromPath(placeholderImage));
+            }
             if (height != 0 && width != 0) {
                 picasso.resize(width,height);
             }
-            picasso.rotate(rotateDegree);
-            switch (transformation) {
-                case "CENTER_CROP":
-                    picasso.centerCrop();
-                    break;
-                case "CENTER_INSIDE":
-                    picasso.centerInside();
-                    break;
-                case "ONLY_SCALE_DOWN":
-                    picasso.onlyScaleDown();
-                    break;
-                case "NO_FADE":
-                    picasso.noFade();
-                    break;
+            if (rotateDegree != 0) {
+                picasso.rotate(rotateDegree);
+            }
+            if (!transformation.isEmpty()) {
+                switch (transformation) {
+                    case "CENTER_CROP":
+                        picasso.centerCrop();
+                        break;
+                    case "CENTER_INSIDE":
+                        picasso.centerInside();
+                        break;
+                    case "ONLY_SCALE_DOWN":
+                        picasso.onlyScaleDown();
+                        break;
+                    case "NO_FADE":
+                        picasso.noFade();
+                        break;
+                }
             }
             picasso.into(target);
         }catch (Exception e){
