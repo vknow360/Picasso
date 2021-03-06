@@ -1,11 +1,13 @@
 ## Picasso
 ### Introduction
 **Description:** Extension to load images with Picasso (For AI2 and its distros) <br>
-**Latest Version:** 1 <br>
+**Latest Version:** 1.1 <br>
 **Released:** December 29,2020 <br>
-**Last Updated:** December 29,2020 <br>
+**Last Updated:** March 6,2021 <br>
 
 ### Blocks
 
-<img src="https://community.appinventor.mit.edu/uploads/default/original/3X/3/7/37fa8c6321c60abc1bd284099b7b872ce58c883f.png"><br>
-<img src="https://community.appinventor.mit.edu/uploads/default/original/3X/2/d/2dacbddc3342a4de1aee4e2b438d31522030d1bc.png">
+![image](https://user-images.githubusercontent.com/41724811/110208873-9b036680-7eaf-11eb-9605-84e1df788f02.png)
+<br>
+![image](https://user-images.githubusercontent.com/41724811/110208893-b3738100-7eaf-11eb-8194-bfd47cc0f989.png)
+
