@@ -1,5 +1,6 @@
 package com.sunny.Picasso;
 
+import android.app.Activity;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
@@ -8,11 +9,12 @@ import android.view.View;
 import com.google.appinventor.components.annotations.*;
 import com.google.appinventor.components.common.*;
 import com.google.appinventor.components.runtime.*;
-import com.squareup.picasso.Callback;
+import com.google.appinventor.components.runtime.util.AsynchUtil;
 import com.squareup.picasso.RequestCreator;
 import com.squareup.picasso.Target;
 
 @DesignerComponent(version = 1,
+        versionName = "1.1",
         description = "Extension to load images with Picasso <br> Developed by Sunny Gupta",
         nonVisible = true,
         iconName = "https://res.cloudinary.com/andromedaviewflyvipul/image/upload/c_scale,h_20,w_20/v1571472765/ktvu4bapylsvnykoyhdm.png",
@@ -22,30 +24,35 @@ import com.squareup.picasso.Target;
 @UsesPermissions(permissionNames = "android.permission.INTERNET,android.permission.READ_EXTERNAL_STORAGE")
 @UsesLibraries(libraries =  "picasso.jar")
 public class Picasso extends AndroidNonvisibleComponent{
+    public Activity activity;
     public Context context;
+    public com.squareup.picasso.Picasso picasso;
     public View view;
     public Target target = new Target() {
         @Override
         public void onBitmapLoaded(Bitmap bitmap, com.squareup.picasso.Picasso.LoadedFrom loadedFrom) {
-            view.setBackground(new BitmapDrawable(form.getResources(),bitmap));
-            Success();
+            setBackground(new BitmapDrawable(form.getResources(),bitmap));
+            postResult(null);
         }
 
         @Override
         public void onBitmapFailed(Drawable drawable) {
-            view.setBackground(drawable);
-            ErrorOccurred("Failed to load image");
+            setBackground(drawable);
+            postResult("Failed to load image");
         }
 
         @Override
         public void onPrepareLoad(Drawable drawable) {
-            view.setBackground(drawable);
+            setBackground(drawable);
         }
     };
     public Picasso(ComponentContainer container){
         super(container.$form());
         context = container.$context();
+        activity = (Activity) context;
+        picasso = com.squareup.picasso.Picasso.with(context);
     }
+
     @SimpleProperty(description = "Attempt to resize the image to fit exactly into the target view")
     public String Fit(){
         return "FIT";
@@ -67,43 +74,73 @@ public class Picasso extends AndroidNonvisibleComponent{
         return "NO_FADE";
     }
     @SimpleFunction(description = "Tries to load image from path on given component with transformation options")
-    public void LoadImage(AndroidViewComponent component,String path,String placeholderImage,String errorImage,int height,int width,int rotateDegree,String transformation,boolean enableIndicators) {
-        view = component.getView();
-        try{
-            RequestCreator picasso = com.squareup.picasso.Picasso.with(context).load(path);
-            if (!errorImage.isEmpty()) {
-                picasso.error(Drawable.createFromPath(errorImage));
-            }
-            if (!placeholderImage.isEmpty()) {
-                picasso.placeholder(Drawable.createFromPath(placeholderImage));
-            }
-            if (height != 0 && width != 0) {
-                picasso.resize(width,height);
-            }
-            if (rotateDegree != 0) {
-                picasso.rotate(rotateDegree);
-            }
-            if (!transformation.isEmpty()) {
-                switch (transformation) {
-                    case "CENTER_CROP":
-                        picasso.centerCrop();
-                        break;
-                    case "CENTER_INSIDE":
-                        picasso.centerInside();
-                        break;
-                    case "ONLY_SCALE_DOWN":
-                        picasso.onlyScaleDown();
-                        break;
-                    case "NO_FADE":
-                        picasso.noFade();
-                        break;
+    public void LoadImage(final AndroidViewComponent component,final String path,final String placeholderImage,final String errorImage,final int height,final int width,final int rotateDegree,String transformation,final boolean enableIndicators) {
+        AsynchUtil.runAsynchronously(new Runnable() {
+            @Override
+            public void run() {
+                view = component.getView();
+                try{
+                    picasso.setIndicatorsEnabled(enableIndicators);
+                    RequestCreator loader = picasso.load(path);
+                    if (!errorImage.isEmpty()) {
+                        loader.error(Drawable.createFromPath(errorImage));
+                    }
+                    if (!placeholderImage.isEmpty()) {
+                        loader.placeholder(Drawable.createFromPath(placeholderImage));
+                    }
+                    if (height != 0 && width != 0) {
+                        loader.resize(width,height);
+                    }
+                    if (rotateDegree != 0) {
+                        loader.rotate(rotateDegree);
+                    }
+                    if (!transformation.isEmpty()) {
+                        switch (transformation) {
+                            case "CENTER_CROP":
+                                loader.centerCrop();
+                                break;
+                            case "CENTER_INSIDE":
+                                loader.centerInside();
+                                break;
+                            case "ONLY_SCALE_DOWN":
+                                loader.onlyScaleDown();
+                                break;
+                            case "NO_FADE":
+                                loader.noFade();
+                                break;
+                        }
+                    }
+                    loader.into(target);
+                }catch (Exception e){
+                    e.printStackTrace();
+                    postResult(e.getMessage()!=null?e.getMessage():e.toString());
                 }
             }
-            picasso.into(target);
-        }catch (Exception e){
-            e.printStackTrace();
-            ErrorOccurred(e.getMessage()!=null?e.getMessage():e.toString());
-        }
+        });
+    }
+    @SimpleFunction(description = "Invalidates cache from the disk and removes if found.")
+    public void InvalidateCache(String path){
+        picasso.invalidate(path);
+    }
+    public void postResult(final String message){
+        activity.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if (message == null){
+                    Success();
+                }else {
+                    ErrorOccurred(message);
+                }
+            }
+        });
+    }
+    public void setBackground(Drawable drawable){
+        activity.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                view.setBackground(drawable);
+            }
+        });
     }
     @SimpleEvent(description = "Event invoked if image has been loaded successfully")
     public void Success(){
