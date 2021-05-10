@@ -1,9 +1,9 @@
 ## Picasso
 ### Introduction
 **Description:** Extension to load images with Picasso (For AI2 and its distros) <br>
-**Latest Version:** 1.1 <br>
+**Latest Version:** 1.3 <br>
 **Released:** December 29,2020 <br>
-**Last Updated:** March 6,2021 <br>
+**Last Updated:** May 9,2021 <br>
 
 ### Blocks
 
