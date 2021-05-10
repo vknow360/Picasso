@@ -9,11 +9,18 @@ import android.view.View;
 import com.google.appinventor.components.annotations.*;
 import com.google.appinventor.components.common.*;
 import com.google.appinventor.components.runtime.*;
+import com.squareup.okhttp.Cache;
+import com.squareup.okhttp.Interceptor;
+import com.squareup.okhttp.OkHttpClient;
+import com.squareup.okhttp.Response;
+import com.squareup.picasso.OkHttpDownloader;
 import com.squareup.picasso.RequestCreator;
 import com.squareup.picasso.Target;
 
+import java.io.IOException;
+
 @DesignerComponent(version = 1,
-        versionName = "1.1",
+        versionName = "1.3",
         description = "Extension to load images with Picasso <br> Developed by Sunny Gupta",
         nonVisible = true,
         iconName = "https://res.cloudinary.com/andromedaviewflyvipul/image/upload/c_scale,h_20,w_20/v1571472765/ktvu4bapylsvnykoyhdm.png",
@@ -21,36 +28,28 @@ import com.squareup.picasso.Target;
         helpUrl = "https://github.com/vknow360/Picasso")
 @SimpleObject(external = true)
 @UsesPermissions(permissionNames = "android.permission.INTERNET,android.permission.READ_EXTERNAL_STORAGE")
-@UsesLibraries(libraries = "picasso.jar")
+@UsesLibraries(libraries = "picasso.jar,okhttp.jar,okio.jar")
 public class Picasso extends AndroidNonvisibleComponent {
     public Activity activity;
     public Context context;
     public com.squareup.picasso.Picasso picasso;
     public View view;
-    public Target target = new Target() {
-        @Override
-        public void onBitmapLoaded(Bitmap bitmap, com.squareup.picasso.Picasso.LoadedFrom loadedFrom) {
-            setBackground(new BitmapDrawable(form.getResources(), bitmap));
-            postResult(null);
-        }
-
-        @Override
-        public void onBitmapFailed(Drawable drawable) {
-            setBackground(drawable);
-            postResult("Failed to load image");
-        }
-
-        @Override
-        public void onPrepareLoad(Drawable drawable) {
-            setBackground(drawable);
-        }
-    };
-
     public Picasso(ComponentContainer container) {
         super(container.$form());
         context = container.$context();
         activity = (Activity) context;
-        picasso = com.squareup.picasso.Picasso.with(context);
+        java.io.File cacheDir = context.getCacheDir();
+        OkHttpClient client = new OkHttpClient();
+        client.setCache(new Cache(cacheDir,Integer.MAX_VALUE));
+        client.networkInterceptors().add(new Interceptor() {
+            @Override
+            public Response intercept(Interceptor.Chain chain) throws IOException {
+                Response originalResponse = chain.proceed(chain.request());
+                return originalResponse.newBuilder().header("Cache-Control", "max-age=" + (60 * 60 * 24 * 365)).build();
+            }
+        });
+        OkHttpDownloader httpDownloader = new OkHttpDownloader(client);
+        picasso = new com.squareup.picasso.Picasso.Builder(context).downloader(httpDownloader).build();
     }
 
     @SimpleProperty(description = "Attempt to resize the image to fit exactly into the target view")
@@ -79,8 +78,8 @@ public class Picasso extends AndroidNonvisibleComponent {
     }
 
     @SimpleFunction(description = "Tries to load image from path on given component with transformation options")
-    public void LoadImage(final AndroidViewComponent component, final String path, final String placeholderImage, final String errorImage, final int height, final int width, final int rotateDegree, final String transformation, final boolean enableIndicators) {
-        view = component.getView();
+    public void LoadImage(final Object component, final String path, final String placeholderImage, final String errorImage, final int height, final int width, final int rotateDegree, final String transformation, final boolean enableIndicators) {
+        view = ((AndroidViewComponent)component).getView();
         try {
             picasso.setIndicatorsEnabled(enableIndicators);
             RequestCreator loader = picasso.load(path);
@@ -112,38 +111,34 @@ public class Picasso extends AndroidNonvisibleComponent {
                         break;
                 }
             }
+            Target target = new Target() {
+                @Override
+                public void onBitmapLoaded(Bitmap bitmap, com.squareup.picasso.Picasso.LoadedFrom loadedFrom) {
+                    view.setBackground(new BitmapDrawable(form.getResources(), bitmap));
+                    Success();
+                }
+
+                @Override
+                public void onBitmapFailed(Drawable drawable) {
+                    view.setBackground(drawable);
+                    ErrorOccurred("Failed to load image");
+                }
+
+                @Override
+                public void onPrepareLoad(Drawable drawable) {
+                    view.setBackground(drawable);
+                }
+            };
             loader.into(target);
         } catch (Exception e) {
             e.printStackTrace();
-            postResult(e.getMessage() != null ? e.getMessage() : e.toString());
+            ErrorOccurred(e.getMessage() != null ? e.getMessage() : e.toString());
         }
     }
 
     @SimpleFunction(description = "Invalidates cache from the disk and removes if found.")
     public void InvalidateCache(String path) {
         picasso.invalidate(path);
-    }
-
-    public void postResult(final String message) {
-        activity.runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                if (message == null) {
-                    Success();
-                } else {
-                    ErrorOccurred(message);
-                }
-            }
-        });
-    }
-
-    public void setBackground(final Drawable drawable) {
-        activity.runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                view.setBackground(drawable);
-            }
-        });
     }
 
     @SimpleEvent(description = "Event invoked if image has been loaded successfully")
