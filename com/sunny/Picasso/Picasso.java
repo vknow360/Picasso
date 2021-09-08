@@ -2,7 +2,8 @@ package com.sunny.Picasso;
 
 import android.app.Activity;
 import android.content.Context;
-import android.graphics.Bitmap;
+import android.graphics.*;
+import android.graphics.Canvas;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.view.View;
@@ -16,11 +17,14 @@ import com.squareup.okhttp.Response;
 import com.squareup.picasso.OkHttpDownloader;
 import com.squareup.picasso.RequestCreator;
 import com.squareup.picasso.Target;
+import com.squareup.picasso.Transformation;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 @DesignerComponent(version = 1,
-        versionName = "1.3",
+        versionName = "1.4",
         description = "Extension to load images with Picasso <br> Developed by Sunny Gupta",
         nonVisible = true,
         iconName = "https://res.cloudinary.com/andromedaviewflyvipul/image/upload/c_scale,h_20,w_20/v1571472765/ktvu4bapylsvnykoyhdm.png",
@@ -33,7 +37,6 @@ public class Picasso extends AndroidNonvisibleComponent {
     public Activity activity;
     public Context context;
     public com.squareup.picasso.Picasso picasso;
-    public View view;
     public Picasso(ComponentContainer container) {
         super(container.$form());
         context = container.$context();
@@ -45,18 +48,19 @@ public class Picasso extends AndroidNonvisibleComponent {
             @Override
             public Response intercept(Interceptor.Chain chain) throws IOException {
                 Response originalResponse = chain.proceed(chain.request());
-                return originalResponse.newBuilder().header("Cache-Control", "max-age=" + (60 * 60 * 24 * 365)).build();
+                return originalResponse.newBuilder().header("Cache-Control","max-age=" + (60 * 60 * 24 * 365)).build();
             }
         });
         OkHttpDownloader httpDownloader = new OkHttpDownloader(client);
         picasso = new com.squareup.picasso.Picasso.Builder(context).downloader(httpDownloader).build();
+		picasso.setLoggingEnabled(true);
     }
-
+    /*
     @SimpleProperty(description = "Attempt to resize the image to fit exactly into the target view")
     public String Fit() {
         return "FIT";
     }
-
+    */
     @SimpleProperty(description = "Crops an image inside of the bounds")
     public String CenterCrop() {
         return "CENTER_CROP";
@@ -76,10 +80,21 @@ public class Picasso extends AndroidNonvisibleComponent {
     public String NoFade() {
         return "NO_FADE";
     }
-
+    @SimpleProperty(description = "Provides circle image transformation")
+    public String CircleImage(){
+        return "CIRCLE_IMAGE";
+    }
+    @SimpleProperty(description = "Provides square image transformation")
+    public String SquareImage(){
+        return "SQUARE_IMAGE";
+    }
+    @SimpleProperty(description = "Provides greyscale image transformation")
+    public String GreyscaleImage(){
+        return "GREYSCALE";
+    }
     @SimpleFunction(description = "Tries to load image from path on given component with transformation options")
     public void LoadImage(final Object component, final String path, final String placeholderImage, final String errorImage, final int height, final int width, final int rotateDegree, final String transformation, final boolean enableIndicators) {
-        view = ((AndroidViewComponent)component).getView();
+        final View view = ((AndroidViewComponent)component).getView();
         try {
             picasso.setIndicatorsEnabled(enableIndicators);
             RequestCreator loader = picasso.load(path);
@@ -95,8 +110,11 @@ public class Picasso extends AndroidNonvisibleComponent {
             if (rotateDegree != 0) {
                 loader.rotate(rotateDegree);
             }
-            if (!transformation.isEmpty()) {
+            if (!transformation.isEmpty() && !transformation.contains(",")) {
                 switch (transformation) {
+                    case "FIT":
+                        loader.fit();
+                        break;
                     case "CENTER_CROP":
                         loader.centerCrop();
                         break;
@@ -109,7 +127,48 @@ public class Picasso extends AndroidNonvisibleComponent {
                     case "NO_FADE":
                         loader.noFade();
                         break;
+                    case "CIRCLE_IMAGE":
+                        loader.transform(new CircleImageTransformation());
+                        break;
+                    case "SQUARE_IMAGE":
+                        loader.transform(new SquareImageTransformation());
+                        break;
+                    case "GREYSCALE":
+                        loader.transform(new GreyscaleImageTransformation());
+                        break;
                 }
+            }else if (transformation.contains(",")){
+                String[] str = transformation.split(",");
+                List<Transformation> transformationList = new ArrayList<>();
+                for (String s:str){
+                    switch (s) {
+                        case "FIT":
+                            loader.fit();
+                            break;
+                        case "CENTER_CROP":
+                            loader.centerCrop();
+                            break;
+                        case "CENTER_INSIDE":
+                            loader.centerInside();
+                            break;
+                        case "ONLY_SCALE_DOWN":
+                            loader.onlyScaleDown();
+                            break;
+                        case "NO_FADE":
+                            loader.noFade();
+                            break;
+                        case "CIRCLE_IMAGE":
+                            transformationList.add(new CircleImageTransformation());
+                            break;
+                        case "SQUARE_IMAGE":
+                            transformationList.add(new SquareImageTransformation());
+                            break;
+                        case "GREYSCALE":
+                            transformationList.add(new GreyscaleImageTransformation());
+                            break;
+                    }
+                }
+                loader.transform(transformationList);
             }
             Target target = new Target() {
                 @Override
@@ -149,5 +208,88 @@ public class Picasso extends AndroidNonvisibleComponent {
     @SimpleEvent(description = "Event invoked when any error occurs and provides error message")
     public void ErrorOccurred(String message) {
         EventDispatcher.dispatchEvent(this, "ErrorOccurred", message);
+    }
+
+    /*
+    taken from https://github.com/wasabeef/picasso-transformations
+     */
+    public static class CircleImageTransformation implements Transformation {
+
+        @Override
+        public Bitmap transform(Bitmap source) {
+            int size = Math.min(source.getWidth(), source.getHeight());
+
+            int width = (source.getWidth() - size) / 2;
+            int height = (source.getHeight() - size) / 2;
+            Bitmap bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
+            android.graphics.Canvas canvas = new Canvas(bitmap);
+            Paint paint = new Paint();
+            BitmapShader shader =
+                    new BitmapShader(source, BitmapShader.TileMode.CLAMP, BitmapShader.TileMode.CLAMP);
+            if (width != 0 || height != 0) {
+                // source isn't square, move viewport to center
+                Matrix matrix = new Matrix();
+                matrix.setTranslate(-width, -height);
+                shader.setLocalMatrix(matrix);
+            }
+            paint.setShader(shader);
+            paint.setAntiAlias(true);
+
+            float r = size / 2f;
+            canvas.drawCircle(r, r, r, paint);
+
+            source.recycle();
+
+            return bitmap;
+        }
+
+        @Override
+        public String key() {
+            return "CircleImageTransformation";
+        }
+    }
+        public static class SquareImageTransformation implements Transformation {
+
+            @Override
+            public Bitmap transform(Bitmap source) {
+                int size = Math.min(source.getWidth(), source.getHeight());
+                int mWidth = (source.getWidth() - size) / 2;
+                int mHeight = (source.getHeight() - size) / 2;
+                Bitmap bitmap = Bitmap.createBitmap(source, mWidth, mHeight, size, size);
+                if (bitmap != source) {
+                    source.recycle();
+                }
+                return bitmap;
+            }
+            @Override
+            public String key() {
+                return "SquareImageTransformation";
+            }
+        }
+    public static class GreyscaleImageTransformation implements Transformation {
+
+        @Override
+        public Bitmap transform(Bitmap source) {
+
+            int width = source.getWidth();
+            int height = source.getHeight();
+
+            Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+
+            Canvas canvas = new Canvas(bitmap);
+            ColorMatrix saturation = new ColorMatrix();
+            saturation.setSaturation(0f);
+            Paint paint = new Paint();
+            paint.setColorFilter(new ColorMatrixColorFilter(saturation));
+            canvas.drawBitmap(source, 0, 0, paint);
+            source.recycle();
+
+            return bitmap;
+        }
+
+        @Override
+        public String key() {
+            return "GrayscaleImageTransformation";
+        }
     }
 }
