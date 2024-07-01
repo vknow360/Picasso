@@ -1,7 +1,7 @@
 ## Picasso
 ### Introduction
 **Description:** Extension to load images with efficiency of Picasso (For AI2 and its distros) <br>
-**Latest Version:** 2 <br>
+**Latest Version:** 2.1 <br>
 **Released:** December 29,2020 <br>
 **Last Updated:** June 30, 2023 <br>
 
