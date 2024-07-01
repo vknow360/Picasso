@@ -1,5 +1,6 @@
 package com.sunny.Picasso;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -31,7 +32,7 @@ import com.squareup.picasso.Transformation;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-
+@SuppressLint("NewApi")
 public class Picasso extends AndroidNonvisibleComponent {
     public Activity activity;
     public Context context;

@@ -9,6 +9,7 @@
 -optimizationpasses 4
 -allowaccessmodification
 -mergeinterfacesaggressively
+-dontusemixedcaseclassnames
 -repackageclasses 'com/sunny/Picasso/repack'
 -flattenpackagehierarchy
 -dontpreverify
